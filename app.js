@@ -8,6 +8,8 @@ const sequelize = require("./config/database");
 // --- CONTROLLERS ---
 const AuthController = require("./controllers/AuthController");
 const UserController = require("./controllers/UserController");
+const ReviewController = require("./controllers/ReviewController");
+const AppReviewController = require("./controllers/AppReviewController");
 
 // --- MIDDLEWARES ---
 const { validateRegister } = require("./middlewares/validation"); // Pastikan file lowercase 'validation.js'
@@ -16,6 +18,21 @@ const authenticateToken = require("./middlewares/authMiddleware"); // Middleware
 const upload = require("./middlewares/upload"); // Middleware upload foto
 
 const app = express();
+
+const optionalAuth = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (token) {
+    const jwt = require("jsonwebtoken");
+    try {
+      const verified = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = verified;
+    } catch (err) {
+      console.log("Invalid token in optional auth");
+    }
+  }
+  next();
+};
 
 // --- 1. GLOBAL MIDDLEWARES (SECURITY & CONFIG) ---
 app.use(helmet()); // Secure HTTP Headers
@@ -65,6 +82,30 @@ router.post(
 
 // Pasang Router ke Path Utama
 app.use("/api/v1", router);
+
+// --- ROUTES REVIEWS ---
+
+// 1. Get Reviews untuk tempat tertentu (Public - tidak butuh login)
+router.get("/reviews/:placeId", (req, res) =>
+  ReviewController.getPlaceReviews(req, res)
+);
+
+// 2. Post Review (Protected - harus login)
+router.post("/reviews", authenticateToken, (req, res) =>
+  ReviewController.addReview(req, res)
+);
+
+// --- ROUTES APP REVIEWS (TESTIMONIALS) ---
+
+// 1. Submit Review Aplikasi (Landing Page)
+router.post("/app-reviews", optionalAuth, (req, res) =>
+  AppReviewController.submitReview(req, res)
+);
+
+// 2. Get Featured Reviews (Untuk ditampilkan di Landing Page)
+router.get("/app-reviews/featured", (req, res) =>
+  AppReviewController.getFeaturedReviews(req, res)
+);
 
 // --- 3. SERVER START & DB SYNC ---
 const PORT = process.env.PORT || 5000;
