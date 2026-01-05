@@ -10,15 +10,18 @@ const AuthController = require("./controllers/AuthController");
 const UserController = require("./controllers/UserController");
 const ReviewController = require("./controllers/ReviewController");
 const AppReviewController = require("./controllers/AppReviewController");
+const PlaceController = require("./controllers/PlaceController");
+const UserVisitController = require("./controllers/UserVisitController");
 
 // --- MIDDLEWARES ---
-const { validateRegister } = require("./middlewares/validation"); // Pastikan file lowercase 'validation.js'
+const { validateRegister } = require("./middlewares/validation");
 const authLimiter = require("./middlewares/rateLimiter");
-const authenticateToken = require("./middlewares/authMiddleware"); // Middleware cek login
-const upload = require("./middlewares/upload"); // Middleware upload foto
+const authenticateToken = require("./middlewares/authMiddleware");
+const upload = require("./middlewares/upload");
 
 const app = express();
 
+// Middleware Optional Auth (Untuk fitur yang bisa diakses guest/user)
 const optionalAuth = (req, res, next) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
@@ -35,44 +38,43 @@ const optionalAuth = (req, res, next) => {
 };
 
 // --- 1. GLOBAL MIDDLEWARES (SECURITY & CONFIG) ---
-app.use(helmet()); // Secure HTTP Headers
-app.use(cors()); // Handle Cross-Origin Resource Sharing
-app.use(express.json()); // Parsing JSON Body
-app.use(express.urlencoded({ extended: true })); // Parsing Form Data
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// 👉 STATIC FILES: Agar gambar profil bisa diakses via URL
-// Contoh: http://localhost:5000/uploads/avatars/avatar-123.jpg
+// 👉 STATIC FILES: Agar gambar profil/tempat bisa diakses via URL
+// Akses: http://localhost:5000/uploads/places/namafile.jpg
 app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
 // --- 2. API ROUTES ---
 const router = express.Router();
 
-// === A. AUTHENTICATION ROUTES ===
-// Register (Protected with Validation)
+// ==============================
+// A. AUTHENTICATION ROUTES
+// ==============================
 router.post("/auth/register", validateRegister, (req, res) =>
   AuthController.register(req, res)
 );
-
-// Login (Protected with Rate Limiter)
 router.post("/auth/login", authLimiter, (req, res) =>
   AuthController.login(req, res)
 );
-
-// Social Login (WeChat/Apple)
 router.post("/auth/social", (req, res) => AuthController.socialLogin(req, res));
 
-// === B. USER PROFILE ROUTES (NEW) ===
-// Get Profile Saya (Harus Login)
+// ==============================
+// B. USER PROFILE ROUTES
+// ==============================
 router.get("/user/me", authenticateToken, (req, res) =>
   UserController.getMyProfile(req, res)
 );
-
-// Update Text Profile (Bio, Username, Location)
 router.put("/user/profile", authenticateToken, (req, res) =>
   UserController.updateProfile(req, res)
 );
-
-// Upload Foto Profil (Multipart Form Data)
+// Upload Avatar (Single File)
 router.post(
   "/user/avatar",
   authenticateToken,
@@ -80,38 +82,77 @@ router.post(
   (req, res) => UserController.uploadAvatar(req, res)
 );
 
-// Pasang Router ke Path Utama
-app.use("/api/v1", router);
+// ==============================
+// C. PLACES (MAPS) ROUTES
+// ==============================
+// 1. Get All Places (Public)
+router.get("/places", (req, res) => PlaceController.getPlacesForMap(req, res));
 
-// --- ROUTES REVIEWS ---
-
-// 1. Get Reviews untuk tempat tertentu (Public - tidak butuh login)
-router.get("/reviews/:placeId", (req, res) =>
-  ReviewController.getPlaceReviews(req, res)
+// 2. Contribute Place (Protected & Multipart)
+// 'photos' harus sesuai dengan formData.append('photos', ...) di frontend
+router.post(
+  "/places/contribute",
+  authenticateToken,
+  upload.array("photos", 5), // Max 5 foto
+  (req, res) => PlaceController.contributePlace(req, res)
 );
 
-// 2. Post Review (Protected - harus login)
-router.post("/reviews", authenticateToken, (req, res) =>
-  ReviewController.addReview(req, res)
+// ==============================
+// D. REVIEWS ROUTES
+// ==============================
+// 1. Get Reviews per Place (Public)
+router.get("/reviews/:placeId", ReviewController.getPlaceReviews);
+
+// 2. Post Review (Protected)
+router.post(
+  "/reviews",
+  authenticateToken,
+  upload.array("photos", 3), // Max 3 foto
+  ReviewController.addReview
 );
 
-// --- ROUTES APP REVIEWS (TESTIMONIALS) ---
-
-// 1. Submit Review Aplikasi (Landing Page)
+// ==============================
+// E. APP TESTIMONIALS ROUTES
+// ==============================
 router.post("/app-reviews", optionalAuth, (req, res) =>
   AppReviewController.submitReview(req, res)
 );
-
-// 2. Get Featured Reviews (Untuk ditampilkan di Landing Page)
 router.get("/app-reviews/featured", (req, res) =>
   AppReviewController.getFeaturedReviews(req, res)
 );
+
+// === USER VISITS ROUTES ===
+// 1. Get My Visits (Load saat aplikasi dibuka)
+router.get("/user/visits", authenticateToken, (req, res) =>
+  UserVisitController.getMyVisits(req, res)
+);
+
+// 2. Toggle Visit/Wishlist
+router.post("/user/visits", authenticateToken, (req, res) =>
+  UserVisitController.toggleVisitStatus(req, res)
+);
+
+// --- MOUNT ROUTER ---
+app.use("/api/v1", router);
+
+// --- ERROR HANDLING MIDDLEWARE (Optional but good) ---
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    return res
+      .status(400)
+      .json({ message: "File upload error: " + err.message });
+  } else if (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+  next();
+});
 
 // --- 3. SERVER START & DB SYNC ---
 const PORT = process.env.PORT || 5000;
 
 sequelize
-  // alter: true -> Otomatis update kolom tabel jika ada perubahan di Model (tambah kolom avatar, dll)
+  // Gunakan { alter: true } agar struktur tabel diperbarui tanpa menghapus data
   .sync({ alter: true })
   .then(() => {
     console.log("✅ Database connected & Tables synced");
