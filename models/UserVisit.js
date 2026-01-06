@@ -1,8 +1,7 @@
-// src/models/UserVisit.js
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 const User = require("./User");
-const Place = require("./Place"); // Pastikan model Place sudah ada
+const Place = require("./Place");
 
 const UserVisit = sequelize.define(
   "UserVisit",
@@ -13,7 +12,7 @@ const UserVisit = sequelize.define(
       autoIncrement: true,
     },
     user_id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.UUID, // WAJIB UUID karena User.id tipenya UUID
       allowNull: false,
       references: {
         model: User,
@@ -39,11 +38,12 @@ const UserVisit = sequelize.define(
   },
   {
     tableName: "user_visits",
-    timestamps: false, // Karena sudah ada visited_at
+    timestamps: false,
+    underscored: true,
   }
 );
 
-// Setup Relasi
+// Relasi
 User.hasMany(UserVisit, { foreignKey: "user_id" });
 UserVisit.belongsTo(User, { foreignKey: "user_id" });
 

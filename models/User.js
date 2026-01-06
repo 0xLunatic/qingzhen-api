@@ -21,19 +21,19 @@ User.init(
     },
     username: {
       type: DataTypes.STRING,
-      unique: true,
       allowNull: true,
+      unique: "unique_username_constraint", // ✅ BERI NAMA KHUSUS
     },
     email: {
       type: DataTypes.STRING,
-      unique: true,
       allowNull: true,
+      unique: "unique_email_constraint", // ✅ BERI NAMA KHUSUS
       validate: { isEmail: true },
     },
     phone_number: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
+      unique: "unique_phone_constraint", // ✅ BERI NAMA KHUSUS
       validate: {
         is: /^(\+86|\+62)[0-9]{9,13}$/,
       },
@@ -44,13 +44,13 @@ User.init(
     },
     wechat_id: {
       type: DataTypes.STRING,
-      unique: true,
       allowNull: true,
+      unique: "unique_wechat_constraint", // ✅ BERI NAMA KHUSUS
     },
     apple_id: {
       type: DataTypes.STRING,
-      unique: true,
       allowNull: true,
+      unique: "unique_apple_constraint", // ✅ BERI NAMA KHUSUS
     },
     // --- PROFIL & GAMIFIKASI ---
     avatar_url: {
@@ -86,9 +86,10 @@ User.init(
     sequelize,
     modelName: "User",
     tableName: "users",
+    underscored: true,
     timestamps: true,
     createdAt: "created_at",
-    updatedAt: "updated_at",
+    updated_at: "updated_at",
   }
 );
 
