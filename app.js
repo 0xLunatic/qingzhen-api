@@ -3,7 +3,10 @@ const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
 const path = require("path");
+const multer = require("multer");
 const sequelize = require("./config/database");
+
+require("./models/associations"); // Baris 9
 
 // --- CONTROLLERS ---
 const AuthController = require("./controllers/AuthController");
@@ -12,12 +15,14 @@ const ReviewController = require("./controllers/ReviewController");
 const AppReviewController = require("./controllers/AppReviewController");
 const PlaceController = require("./controllers/PlaceController");
 const UserVisitController = require("./controllers/UserVisitController");
+const AdminController = require("./controllers/AdminController");
 
 // --- MIDDLEWARES ---
 const { validateRegister } = require("./middlewares/validation");
 const authLimiter = require("./middlewares/rateLimiter");
 const authenticateToken = require("./middlewares/authMiddleware");
 const upload = require("./middlewares/upload");
+const authenticateAdmin = require("./middlewares/authAdmin");
 
 const app = express();
 
@@ -86,7 +91,7 @@ router.post(
 // C. PLACES (MAPS) ROUTES
 // ==============================
 // 1. Get All Places (Public)
-router.get("/places", (req, res) => PlaceController.getPlacesForMap(req, res));
+router.get("/places", (req, res) => PlaceController.getAllPlaces(req, res));
 
 // 2. Contribute Place (Protected & Multipart)
 // 'photos' harus sesuai dengan formData.append('photos', ...) di frontend
@@ -132,6 +137,49 @@ router.post("/user/visits", authenticateToken, (req, res) =>
   UserVisitController.toggleVisitStatus(req, res)
 );
 
+// ADMIN ROUTER
+router.get("/admin/stats", authenticateAdmin, AdminController.getStats);
+
+// Manage Users (INI YANG MENYEBABKAN ERROR 404 ANDA)
+router.get("/admin/users", authenticateAdmin, AdminController.getUsers);
+router.delete(
+  "/admin/users/:id",
+  authenticateAdmin,
+  AdminController.deleteUser
+);
+router.put(
+  "/admin/users/:id/role",
+  authenticateAdmin,
+  AdminController.updateUserRole
+); // Update Role
+
+// Manage Places
+router.put(
+  "/admin/places/:id/verify",
+  authenticateAdmin,
+  AdminController.verifyPlace
+);
+router.delete(
+  "/admin/places/:id",
+  authenticateAdmin,
+  AdminController.deletePlace
+);
+router.get("/admin/places", authenticateAdmin, AdminController.getAllPlaces);
+// User Contribute
+
+// Admin Create & Update
+router.post(
+  "/admin/places",
+  authenticateAdmin,
+  upload.array("photos", 5),
+  AdminController.createPlace
+);
+router.put(
+  "/admin/places/:id",
+  authenticateAdmin,
+  upload.array("photos", 5),
+  AdminController.updatePlace
+);
 // --- MOUNT ROUTER ---
 app.use("/api/v1", router);
 

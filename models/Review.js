@@ -1,7 +1,10 @@
 // src/models/Review.js
 const { Model, DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
-const User = require("./User"); // Import model User untuk relasi
+
+// ❌ HAPUS IMPORT MODEL LAIN
+// const User = require("./User");
+// const Place = require("./Place");
 
 class Review extends Model {}
 
@@ -12,34 +15,26 @@ Review.init(
       autoIncrement: true,
       primaryKey: true,
     },
-    place_id: {
-      // Kita pakai STRING agar fleksibel (bisa simpan ID dari Google Maps/OSM yang panjang)
-      type: DataTypes.STRING,
+    user_id: {
+      type: DataTypes.UUID,
       allowNull: false,
     },
-    user_id: {
-      type: DataTypes.UUID, // Harus sama dengan tipe ID di tabel Users
+    place_id: {
+      type: DataTypes.INTEGER,
       allowNull: false,
-      references: {
-        model: User,
-        key: "id",
-      },
     },
     rating: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      validate: {
-        min: 1,
-        max: 5,
-      },
+      validate: { min: 1, max: 5 },
     },
     comment: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
     photos: {
-      type: DataTypes.JSON, // Menyimpan array URL foto: ["url1.jpg", "url2.jpg"]
-      defaultValue: [],
+      type: DataTypes.JSON,
+      allowNull: true,
     },
   },
   {
@@ -48,14 +43,11 @@ Review.init(
     tableName: "reviews",
     timestamps: true,
     createdAt: "created_at",
-    updatedAt: false, // Kita tidak butuh updated_at untuk review (opsional)
+    updatedAt: "updated_at",
   }
 );
 
-// --- DEFINISI RELASI ---
-// Review milik User
-Review.belongsTo(User, { foreignKey: "user_id", as: "user" });
-// User punya banyak Review
-User.hasMany(Review, { foreignKey: "user_id", as: "reviews" });
+// ❌ HAPUS RELASI DI BAWAH INI
+// Review.belongsTo(...)
 
 module.exports = Review;

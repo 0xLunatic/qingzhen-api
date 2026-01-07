@@ -1,53 +1,48 @@
-const { DataTypes } = require("sequelize");
+// src/models/UserVisit.js
+const { Model, DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
-const User = require("./User");
-const Place = require("./Place");
 
-const UserVisit = sequelize.define(
-  "UserVisit",
+class UserVisit extends Model {}
+
+UserVisit.init(
   {
     id: {
       type: DataTypes.INTEGER,
-      primaryKey: true,
       autoIncrement: true,
+      primaryKey: true,
     },
     user_id: {
-      type: DataTypes.UUID, // WAJIB UUID karena User.id tipenya UUID
+      type: DataTypes.UUID,
       allowNull: false,
-      references: {
-        model: User,
-        key: "id",
-      },
     },
     place_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      references: {
-        model: Place,
-        key: "id",
-      },
+    },
+    status: {
+      type: DataTypes.ENUM("Visited", "Wishlist"),
+      allowNull: false,
+      defaultValue: "Visited",
+    },
+    place_data: {
+      type: DataTypes.JSON,
+      allowNull: true,
     },
     visited_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
     },
-    status: {
-      type: DataTypes.ENUM("Visited", "Wishlist"),
-      allowNull: false,
-    },
   },
   {
+    sequelize,
+    modelName: "UserVisit",
     tableName: "user_visits",
-    timestamps: false,
-    underscored: true,
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
   }
 );
 
-// Relasi
-User.hasMany(UserVisit, { foreignKey: "user_id" });
-UserVisit.belongsTo(User, { foreignKey: "user_id" });
-
-Place.hasMany(UserVisit, { foreignKey: "place_id" });
-UserVisit.belongsTo(Place, { foreignKey: "place_id" });
+// ❌ HAPUS RELASI DI SINI JIKA ADA
 
 module.exports = UserVisit;
