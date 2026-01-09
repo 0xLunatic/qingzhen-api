@@ -204,9 +204,9 @@ sequelize
   .sync({ alter: true })
   .then(() => {
     console.log("✅ Database connected & Tables synced");
-    app.listen(PORT, () => {
+    app.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`🔗 Local Link: http://localhost:${PORT}`);
+      console.log(`🌐 Listening on 0.0.0.0:${PORT}`);
     });
   })
   .catch((err) => console.error("❌ DB Error:", err));
