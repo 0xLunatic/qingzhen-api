@@ -8,6 +8,8 @@ const sequelize = require("./config/database");
 
 require("./models/associations"); // Baris 9
 
+const { generateHalalItinerary } = require("./services/AiServices");
+
 // --- CONTROLLERS ---
 const AuthController = require("./controllers/AuthController");
 const UserController = require("./controllers/UserController");
@@ -46,7 +48,7 @@ const optionalAuth = (req, res, next) => {
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
+  }),
 );
 app.use(cors());
 app.use(express.json());
@@ -63,10 +65,10 @@ const router = express.Router();
 // A. AUTHENTICATION ROUTES
 // ==============================
 router.post("/auth/register", validateRegister, (req, res) =>
-  AuthController.register(req, res)
+  AuthController.register(req, res),
 );
 router.post("/auth/login", authLimiter, (req, res) =>
-  AuthController.login(req, res)
+  AuthController.login(req, res),
 );
 router.post("/auth/social", (req, res) => AuthController.socialLogin(req, res));
 
@@ -74,17 +76,17 @@ router.post("/auth/social", (req, res) => AuthController.socialLogin(req, res));
 // B. USER PROFILE ROUTES
 // ==============================
 router.get("/user/me", authenticateToken, (req, res) =>
-  UserController.getMyProfile(req, res)
+  UserController.getMyProfile(req, res),
 );
 router.put("/user/profile", authenticateToken, (req, res) =>
-  UserController.updateProfile(req, res)
+  UserController.updateProfile(req, res),
 );
 // Upload Avatar (Single File)
 router.post(
   "/user/avatar",
   authenticateToken,
   upload.single("avatar"),
-  (req, res) => UserController.uploadAvatar(req, res)
+  (req, res) => UserController.uploadAvatar(req, res),
 );
 
 // ==============================
@@ -99,7 +101,7 @@ router.post(
   "/places/contribute",
   authenticateToken,
   upload.array("photos", 5), // Max 5 foto
-  (req, res) => PlaceController.contributePlace(req, res)
+  (req, res) => PlaceController.contributePlace(req, res),
 );
 
 // ==============================
@@ -113,28 +115,28 @@ router.post(
   "/reviews",
   authenticateToken,
   upload.array("photos", 3), // Max 3 foto
-  ReviewController.addReview
+  ReviewController.addReview,
 );
 
 // ==============================
 // E. APP TESTIMONIALS ROUTES
 // ==============================
 router.post("/app-reviews", optionalAuth, (req, res) =>
-  AppReviewController.submitReview(req, res)
+  AppReviewController.submitReview(req, res),
 );
 router.get("/app-reviews/featured", (req, res) =>
-  AppReviewController.getFeaturedReviews(req, res)
+  AppReviewController.getFeaturedReviews(req, res),
 );
 
 // === USER VISITS ROUTES ===
 // 1. Get My Visits (Load saat aplikasi dibuka)
 router.get("/user/visits", authenticateToken, (req, res) =>
-  UserVisitController.getMyVisits(req, res)
+  UserVisitController.getMyVisits(req, res),
 );
 
 // 2. Toggle Visit/Wishlist
 router.post("/user/visits", authenticateToken, (req, res) =>
-  UserVisitController.toggleVisitStatus(req, res)
+  UserVisitController.toggleVisitStatus(req, res),
 );
 
 // ADMIN ROUTER
@@ -145,24 +147,24 @@ router.get("/admin/users", authenticateAdmin, AdminController.getUsers);
 router.delete(
   "/admin/users/:id",
   authenticateAdmin,
-  AdminController.deleteUser
+  AdminController.deleteUser,
 );
 router.put(
   "/admin/users/:id/role",
   authenticateAdmin,
-  AdminController.updateUserRole
+  AdminController.updateUserRole,
 ); // Update Role
 
 // Manage Places
 router.put(
   "/admin/places/:id/verify",
   authenticateAdmin,
-  AdminController.verifyPlace
+  AdminController.verifyPlace,
 );
 router.delete(
   "/admin/places/:id",
   authenticateAdmin,
-  AdminController.deletePlace
+  AdminController.deletePlace,
 );
 router.get("/admin/places", authenticateAdmin, AdminController.getAllPlaces);
 // User Contribute
@@ -172,13 +174,13 @@ router.post(
   "/admin/places",
   authenticateAdmin,
   upload.array("photos", 5),
-  AdminController.createPlace
+  AdminController.createPlace,
 );
 router.put(
   "/admin/places/:id",
   authenticateAdmin,
   upload.array("photos", 5),
-  AdminController.updatePlace
+  AdminController.updatePlace,
 );
 // --- MOUNT ROUTER ---
 app.use("/api/v1", router);
@@ -194,6 +196,19 @@ app.use((err, req, res, next) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
   next();
+});
+
+router.post("/travel/generate", authenticateToken, async (req, res) => {
+  const { location, days, lat, lng } = req.body;
+  try {
+    const itinerary = await generateHalalItinerary(location, days, lat, lng);
+    res.json({
+      success: true,
+      data: itinerary,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 // --- 3. SERVER START & DB SYNC ---
