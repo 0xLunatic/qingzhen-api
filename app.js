@@ -8,8 +8,6 @@ const sequelize = require("./config/database");
 
 require("./models/associations"); // Baris 9
 
-const { generateHalalItinerary } = require("./services/AiServices");
-
 // --- CONTROLLERS ---
 const AuthController = require("./controllers/AuthController");
 const UserController = require("./controllers/UserController");
@@ -118,6 +116,18 @@ router.post(
   ReviewController.addReview,
 );
 
+// ======================================
+// ADMIN REVIEW MANAGEMENT
+// ======================================
+
+router.get("/admin/reviews", authenticateAdmin, AdminController.getAllReviews);
+
+router.delete(
+  "/admin/reviews/:id",
+  authenticateAdmin,
+  AdminController.deleteReview,
+);
+
 // ==============================
 // E. APP TESTIMONIALS ROUTES
 // ==============================
@@ -198,16 +208,27 @@ app.use((err, req, res, next) => {
   next();
 });
 
-router.post("/travel/generate", authenticateToken, async (req, res) => {
-  const { location, days, lat, lng } = req.body;
+router.post("/travel/generate", async (req, res) => {
+  const { location } = req.body;
+
   try {
-    const itinerary = await generateHalalItinerary(location, days, lat, lng);
+    const { lat, lon, location } = req.body;
+
+    const result = await generateHalalItinerary({
+      lat,
+      lon,
+      location,
+    });
+
     res.json({
       success: true,
-      data: itinerary,
+      data: result,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 });
 
@@ -216,7 +237,7 @@ const PORT = process.env.PORT || 5000;
 
 sequelize
   // Gunakan { alter: true } agar struktur tabel diperbarui tanpa menghapus data
-  .sync({ alter: true })
+  .sync()
   .then(() => {
     console.log("✅ Database connected & Tables synced");
     app.listen(PORT, "0.0.0.0", () => {

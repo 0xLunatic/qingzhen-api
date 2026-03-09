@@ -29,4 +29,15 @@ UserVisit.belongsTo(User, { foreignKey: "user_id", as: "user" });
 Place.hasMany(UserVisit, { foreignKey: "place_id", as: "visits" });
 UserVisit.belongsTo(Place, { foreignKey: "place_id", as: "place" });
 
+Review.belongsTo(User, {
+  foreignKey: "user_id",
+});
+
+Review.belongsTo(Place, {
+  foreignKey: "place_id",
+});
+
+Review.belongsTo(User, { foreignKey: "user_id", as: "reviewUser" });
+Review.belongsTo(Place, { foreignKey: "place_id", as: "reviewPlace" });
+
 module.exports = { User, Place, Review, UserVisit };

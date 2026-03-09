@@ -1,9 +1,12 @@
 // src/services/ReviewService.js
 const Review = require("../models/Review");
 const User = require("../models/User");
+const Place = require("../models/Place");
 
 class ReviewService {
-  // Create Review Baru
+  // =========================
+  // CREATE REVIEW
+  // =========================
   async createReview(data) {
     try {
       const review = await Review.create({
@@ -13,29 +16,86 @@ class ReviewService {
         comment: data.comment,
         photos: data.photos || [],
       });
+
       return review;
     } catch (error) {
       throw new Error("Failed to create review: " + error.message);
     }
   }
 
-  // Ambil Review berdasarkan Place ID
-  async getReviewsByPlace(placeId) {
+  // =========================
+  // GET REVIEW BY PLACE
+  // =========================
+
+  // =========================
+  // GET REVIEW BY ID
+  // =========================
+  async getReviewById(id) {
     try {
-      const reviews = await Review.findAll({
-        where: { place_id: placeId },
-        order: [["created_at", "DESC"]], // Urutkan dari yang terbaru
+      const review = await Review.findByPk(id, {
         include: [
           {
             model: User,
-            as: "user", // Sesuai alias di Model
-            attributes: ["id", "username", "name", "avatar_url"], // Ambil info user secukupnya
+            attributes: ["id", "username", "name", "avatar_url"],
+          },
+          {
+            model: Place,
+            attributes: ["id", "name_en", "name_cn", "category"],
           },
         ],
       });
-      return reviews;
+
+      if (!review) {
+        throw new Error("Review not found");
+      }
+
+      return review;
     } catch (error) {
-      throw new Error("Failed to fetch reviews: " + error.message);
+      throw new Error("Failed to fetch review: " + error.message);
+    }
+  }
+
+  // =========================
+  // UPDATE REVIEW
+  // =========================
+  async updateReview(id, data) {
+    try {
+      const review = await Review.findByPk(id);
+
+      if (!review) {
+        throw new Error("Review not found");
+      }
+
+      await review.update({
+        rating: data.rating ?? review.rating,
+        comment: data.comment ?? review.comment,
+        photos: data.photos ?? review.photos,
+      });
+
+      return review;
+    } catch (error) {
+      throw new Error("Failed to update review: " + error.message);
+    }
+  }
+
+  // =========================
+  // DELETE REVIEW
+  // =========================
+  async deleteReview(id) {
+    try {
+      const review = await Review.findByPk(id);
+
+      if (!review) {
+        throw new Error("Review not found");
+      }
+
+      await review.destroy();
+
+      return {
+        message: "Review deleted successfully",
+      };
+    } catch (error) {
+      throw new Error("Failed to delete review: " + error.message);
     }
   }
 }

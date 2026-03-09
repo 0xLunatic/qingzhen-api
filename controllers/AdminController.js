@@ -2,6 +2,7 @@
 const User = require("../models/User");
 const Place = require("../models/Place");
 const UserVisit = require("../models/UserVisit");
+const Review = require("../models/Review");
 
 class AdminController {
   // ==========================================
@@ -189,7 +190,7 @@ class AdminController {
       // Logic Gambar: Hanya update jika ada file baru diupload
       if (req.files && req.files.length > 0) {
         const photosArray = req.files.map(
-          (f) => `/uploads/places/${f.filename}`
+          (f) => `/uploads/places/${f.filename}`,
         );
         updateData.image_url = photosArray[0]; // Ganti foto utama
         updateData.photos = photosArray; // Ganti galeri
@@ -217,7 +218,7 @@ class AdminController {
           halal_status: "Verified",
           is_verified: true,
         },
-        { where: { id: req.params.id } }
+        { where: { id: req.params.id } },
       );
       res.json({ success: true, message: "Place verified successfully" });
     } catch (error) {
@@ -234,6 +235,80 @@ class AdminController {
       if (!deleted) return res.status(404).json({ message: "Not found" });
 
       res.json({ success: true, message: "Place deleted" });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+  // ==========================================
+  // 4. REVIEW MANAGEMENT
+  // ==========================================
+  // src/controllers/AdminController.js
+  async getAllReviews(req, res) {
+    try {
+      const reviews = await Review.findAll({
+        order: [["created_at", "DESC"]],
+        include: [
+          {
+            model: User,
+            as: "reviewUser",
+            attributes: ["id", "username", "name", "avatar_url"],
+          },
+          {
+            model: Place,
+            as: "reviewPlace",
+            attributes: ["id", "name_en"],
+          },
+        ],
+      });
+
+      res.json({ success: true, data: reviews });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async getReviewsByPlace(placeId) {
+    try {
+      const reviews = await Review.findAll({
+        where: { place_id: placeId },
+        order: [["created_at", "DESC"]],
+        include: [
+          {
+            model: User,
+            attributes: ["id", "username", "name", "avatar_url"],
+          },
+          {
+            model: Place,
+            attributes: ["id", "name_en", "name_cn", "category"],
+          },
+        ],
+      });
+
+      return reviews;
+    } catch (error) {
+      throw new Error("Failed to fetch reviews: " + error.message);
+    }
+  }
+
+  // B. Delete Review
+  async deleteReview(req, res) {
+    try {
+      const { id } = req.params;
+
+      const review = await Review.findByPk(id);
+
+      if (!review) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Review not found" });
+      }
+
+      await review.destroy();
+
+      res.json({
+        success: true,
+        message: "Review deleted successfully",
+      });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
